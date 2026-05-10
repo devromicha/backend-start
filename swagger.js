@@ -16,15 +16,21 @@ const swaggerOptions = {
       description: "Express + MongoDB + Swagger API"
     }
   },
-  apis: ["index.js"]
+  apis: ["swagger.js"]
 };
 
 const swaggerDocs = swaggerJsDoc(swaggerOptions);
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
+const jwt = require('jsonwebtoken');
+const SECRET = "my_SECRET_key"
+
+
+
 
 // ================= MONGODB =================
 const { MongoClient, ServerApiVersion } = require('mongodb');
+// const jsonwebtoken = require('jsonwebtoken');
 
 const uri = "mongodb+srv://learning-backend:gv32YEO3cgZ7HB99@cluster0.dvev3.mongodb.net/?appName=Cluster0";
 
@@ -58,12 +64,71 @@ run().catch(console.dir);
 
 // ================= ROUTES =================
 
-// Home
+/**
+ * @swagger
+ * /login:
+ *   post:
+ *     summary: User login
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           example:
+ *             email: test@gmail.com
+ *     responses:
+ *       200:
+ *         description: login success
+ */
+
+app.post('/login', (req,res)=>{
+    const user = req.body;
+
+    if(user.email === "test@gmail.com"){
+        const token = jwt.sign(
+            {email: user.emai},
+            SECRET,
+            {expiresIn: "1h"}
+        )
+
+        res.json({
+            message:"login success",
+            token:token
+        })
+    }
+    else{
+     res.json({message:"Invalid token"})
+    }
+})
+
+
 app.get("/", (req, res) => {
   res.send("running backend server");
 });
 
+function verifyToken(req,res,next) {
+    const authHeader = req.headers.authorization;
 
+    if (!authHeader) {
+        return res.json({ message: "token not found" });
+    }
+
+    const token = authHeader.split(" ")[1]; 
+
+    jwt.verify(token,SECRET,(err,decoded) => {
+        if(err){
+            return res.json({message:"invalid token"})
+        }
+        req.user = decoded
+        next()
+    })
+}
+
+app.get('/profile', verifyToken, (req, res) => {
+    res.json({
+        message: "Protected data",
+        user: req.user
+    });
+});
 // ================= CREATE USER =================
 /**
  * @swagger
